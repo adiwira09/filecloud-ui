@@ -31,14 +31,14 @@ export default function FileGrid({
           </div>
 
           <div
-            className="relative cursor-pointer select-none border-b border-black"
+            className="relative cursor-pointer select-none border-b border-gray-100 overflow-hidden"
             onClick={() => file.is_folder ? handleOpenFolder(file) : handleOpenPreview(file)}
           >
             {renderGridThumbnail(file)}
 
-            {/* Floating Hover Action Overlay */}
+            {/* Floating Action Overlay Modern */}
             <div
-              classclassName="absolute top-1.5 right-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center gap-0.5 bg-white border border-black rounded p-0.5 shadow-sm"
+              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center gap-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg p-1 shadow-md z-10"
               onClick={(e) => e.stopPropagation()}
             >
               {!file.is_folder && (
@@ -46,25 +46,25 @@ export default function FileGrid({
                   <button
                     title="Preview"
                     onClick={() => handleOpenPreview(file)}
-                    className="p-2 sm:p-1 text-gray-700 hover:text-blue-600 hover:bg-gray-100 rounded touch-manipulation"
+                    className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
                   >
-                    <Eye className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                    <Eye className="w-4 h-4" />
                   </button>
                   <button
                     title="Download"
                     onClick={() => handleDownload(file.id, file.name)}
-                    className="p-1 text-gray-700 hover:text-black hover:bg-gray-100 rounded"
+                    className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
                   >
-                    <Download className="w-3.5 h-3.5" />
+                    <Download className="w-4 h-4" />
                   </button>
                 </>
               )}
               <button
                 title="Delete"
                 onClick={() => handleDelete(file.id, file.name)}
-                className="p-1 text-gray-700 hover:text-red-600 hover:bg-gray-100 rounded"
+                className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
           </div>
