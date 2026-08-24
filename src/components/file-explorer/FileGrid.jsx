@@ -38,7 +38,7 @@ export default function FileGrid({
 
             {/* Floating Hover Action Overlay */}
             <div
-              className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 bg-white border border-black rounded p-0.5 shadow-sm"
+              classclassName="absolute top-1.5 right-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center gap-0.5 bg-white border border-black rounded p-0.5 shadow-sm"
               onClick={(e) => e.stopPropagation()}
             >
               {!file.is_folder && (
@@ -46,9 +46,9 @@ export default function FileGrid({
                   <button
                     title="Preview"
                     onClick={() => handleOpenPreview(file)}
-                    className="p-1 text-gray-700 hover:text-blue-600 hover:bg-gray-100 rounded"
+                    className="p-2 sm:p-1 text-gray-700 hover:text-blue-600 hover:bg-gray-100 rounded touch-manipulation"
                   >
-                    <Eye className="w-3.5 h-3.5" />
+                    <Eye className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                   </button>
                   <button
                     title="Download"

@@ -29,7 +29,7 @@ export default function NewFolderModal({
             value={newFolderName}
             onChange={(e) => setNewFolderName(e.target.value)}
             autoFocus
-            className="w-full border-2 border-black rounded p-2 text-sm mb-4 focus:outline-none"
+            className="w-full border-2 border-black rounded p-2 text-base md:text-sm mb-4 focus:outline-none"
           />
           <div className="flex justify-end gap-2">
             <button

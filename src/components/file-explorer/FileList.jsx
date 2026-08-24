@@ -17,7 +17,20 @@ export default function FileList({
       {/* 1. TAMPILAN MOBILE (< md): CARD LIST BERTUMPUK */}
       <div className="md:hidden border border-black rounded-lg bg-white overflow-hidden divide-y divide-gray-200">
         {files.map((file) => (
-          <div key={file.id} className="p-3 flex items-center justify-between gap-3 hover:bg-gray-50 transition-colors">
+          <div 
+            key={file.id} 
+            className={`p-3 flex items-center justify-between gap-3 transition-colors ${
+              selectedItemIds.includes(file.id) ? 'bg-blue-50/60' : 'hover:bg-gray-50'
+            }`}
+          >
+            {/* Checkbox Multi-Select Tambahan Khusus Mobile */}
+            <input
+              type="checkbox"
+              checked={selectedItemIds.includes(file.id)}
+              onChange={() => handleSelectItem(file.id)}
+              className="w-4 h-4 accent-black cursor-pointer flex-shrink-0"
+            />
+
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <div className="flex-shrink-0">
                 {renderFileIcon(file.type, "w-6 h-6")}
@@ -45,20 +58,20 @@ export default function FileList({
               </div>
             </div>
 
-            <div className="flex items-center gap-1 flex-shrink-0">
+            <div className="flex items-center gap-0.5 flex-shrink-0">
               {!file.is_folder && (
                 <>
                   <button
                     title="Preview"
                     onClick={() => handleOpenPreview(file)}
-                    className="p-1.5 text-gray-600 hover:text-blue-600"
+                    className="p-2.5 text-gray-600 hover:text-blue-600 active:bg-gray-200 rounded-full touch-manipulation"
                   >
                     <Eye className="w-4 h-4" />
                   </button>
                   <button
                     title="Download"
                     onClick={() => handleDownload(file.id, file.name)}
-                    className="p-1.5 text-gray-600 hover:text-black"
+                    className="p-2.5 text-gray-600 hover:text-black active:bg-gray-200 rounded-full touch-manipulation"
                   >
                     <Download className="w-4 h-4" />
                   </button>
@@ -67,7 +80,7 @@ export default function FileList({
               <button
                 title="Delete"
                 onClick={() => handleDelete(file.id, file.name)}
-                className="p-1.5 text-gray-600 hover:text-red-600"
+                className="p-2.5 text-gray-600 hover:text-red-600 active:bg-gray-200 rounded-full touch-manipulation"
               >
                 <Trash2 className="w-4 h-4" />
               </button>

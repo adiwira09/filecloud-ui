@@ -78,7 +78,11 @@ export default function FilePreviewModal({
           </div>
         );
       case 'pdf':
-        return blobUrl ? <iframe src={blobUrl} title={previewItem.name} className="w-full h-[70vh] rounded border border-gray-300" /> : null;
+        return blobUrl ? (
+          <div className="w-full h-[65vh] sm:h-[70vh] overflow-y-auto rounded border border-gray-300 -webkit-overflow-scrolling-touch">
+            <iframe src={blobUrl} title={previewItem.name} className="w-full h-full min-h-[400px]" />
+          </div>
+        ) : null;
       case 'text':
         return <pre className="p-4 bg-gray-900 text-green-400 font-mono text-xs rounded max-h-[70vh] overflow-auto whitespace-pre-wrap">{textContent}</pre>;
       case 'video':
@@ -105,8 +109,8 @@ export default function FilePreviewModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-white border-2 border-black p-6 rounded-lg w-full max-w-4xl shadow-2xl relative flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white border-2 border-black p-3.5 sm:p-6 rounded-lg w-full max-w-4xl shadow-2xl relative flex flex-col max-h-[95vh] sm:max-h-[90vh]">
         <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200 gap-2">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             {renderFileIcon(previewItem.type)}
