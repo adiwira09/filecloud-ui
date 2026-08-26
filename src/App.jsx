@@ -530,20 +530,16 @@ export default function App() {
     }
   };
 
-  const handleDownload = async (id, name = 'download') => {
+  const handleDownload = async (id) => {
     try {
-      const res = await authFetch(`${API_BASE}/api/download/${id}`);
-      if (!res.ok) throw new Error("Gagal mengunduh file");
+      const res = await authFetch(`${API_BASE}/api/download-token/${id}`, {
+        method: 'POST',
+      });
+      
+      if (!res.ok) throw new Error("Gagal membuat link download");
+      const { download_token } = await res.json();
 
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = name;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      window.location.href = `${API_BASE}/api/download/${download_token}`;
     } catch (err) {
       console.error("Error download:", err);
       alert("Gagal mengunduh file.");
