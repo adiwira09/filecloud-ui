@@ -1,5 +1,5 @@
 import React from 'react';
-import { Folder, Trash2 } from 'lucide-react';
+import { Folder } from 'lucide-react';
 
 export default function Sidebar({
   isMobileMenuOpen,
@@ -40,21 +40,6 @@ export default function Sidebar({
           >
             <Folder className="w-4 h-4" />
             <span>My Files</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setActiveTab('trash');
-              setIsMobileMenuOpen(false);
-            }}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition-colors ${
-              activeTab === 'trash'
-                ? 'bg-gray-200 text-black border border-gray-300'
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            <Trash2 className="w-4 h-4" />
-            <span>Trash</span>
           </button>
         </nav>
 
