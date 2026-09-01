@@ -584,8 +584,14 @@ export default function App() {
     setSelectedFiles(valid);
     setSkippedFiles(invalid);
   };
-
   
+  // HANDLER LOGOUT
+  const handleLogout = () => {
+    if (confirm('Apakah Anda yakin ingin mengunci sesi ini?')) {
+      localStorage.removeItem('auth_token');
+      setAuthToken('');
+    }
+  };
 
   if (!authToken) {
     return (
@@ -609,6 +615,7 @@ export default function App() {
         setIsMobileMenuOpen={setIsMobileMenuOpen}
         onOpenUploadModal={() => setIsUploadModalOpen(true)}
         onOpenNewFolderModal={() => setIsNewFolderModalOpen(true)}
+        onLogout={handleLogout}
       />
 
       {/* MAIN BODY */}
