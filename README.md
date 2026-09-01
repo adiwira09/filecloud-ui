@@ -45,12 +45,12 @@ Antarmuka web untuk manajemen file berbasis cloud pribadi yang memudahkan untuk 
 ![Preview Modal](docs/preview.png)
 
 ### Tampilan Mobile (Sidebar/Hamburger Menu)
-<table>
+<table align="center">
   <tr>
-    <td align="center">
+    <td align="center" width="50%">
       <img src="docs/list-mobile.png" width="300">
     </td>
-    <td align="center">
+    <td align="center" width="50%">
       <img src="docs/grid-mobile.png" width="300">
     </td>
   </tr>
