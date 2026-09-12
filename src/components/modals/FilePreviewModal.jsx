@@ -15,12 +15,13 @@ export default function FilePreviewModal({
   handleDownload,
   renderFileIcon,
 }) {
-  if (!previewItem) return null;
-
   const [blobUrl, setBlobUrl] = useState(null);
 
   useEffect(() => {
-    if (!previewItem || previewItem.type === 'text') return;
+    if (!previewItem || previewItem.type === 'text') {
+      setBlobUrl(null);
+      return;
+    }
 
     let isMounted = true;
     let currentObjectUrl = null;
@@ -28,13 +29,24 @@ export default function FilePreviewModal({
     const loadMedia = async () => {
       setIsPreviewLoading(true);
       setPreviewError(false);
+
       try {
-        const res = await fetch(`${API_BASE}/api/preview/${previewItem.id}`, {
-          headers: { 'X-API-Key': authToken },
-        });
-        if (!res.ok) throw new Error("Gagal memuat preview");
+        const res = await fetch(
+          `${API_BASE}/api/preview/${previewItem.id}`,
+          {
+            headers: {
+              'X-API-Key': authToken,
+            },
+          }
+        );
+
+        if (!res.ok) {
+          throw new Error('Gagal memuat preview');
+        }
+
         const blob = await res.blob();
         currentObjectUrl = URL.createObjectURL(blob);
+
         if (isMounted) {
           setBlobUrl(currentObjectUrl);
           setIsPreviewLoading(false);
@@ -51,9 +63,22 @@ export default function FilePreviewModal({
 
     return () => {
       isMounted = false;
-      if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+
+      if (currentObjectUrl) {
+        URL.revokeObjectURL(currentObjectUrl);
+      }
     };
-  }, [previewItem?.id, API_BASE, authToken]);
+  }, [
+    previewItem?.id,
+    previewItem?.type,
+    authToken,
+    setIsPreviewLoading,
+    setPreviewError,
+  ]);
+
+  if (!previewItem) {
+    return null;
+  }
 
   const renderPreviewBody = () => {
     if (previewError) {
