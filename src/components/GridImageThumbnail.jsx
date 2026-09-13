@@ -12,14 +12,62 @@ export default function GridImageThumbnail({ file, authToken }) {
 
     const fetchImage = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/preview/${file.id}?size=thumb`, {
-          headers: { 'X-API-Key': authToken },
-        });
-        if (!res.ok) throw new Error('Failed to load image');
+        setHasError(false);
+        setImageUrl(null);
+
+        const res = await fetch(
+          `${API_BASE}/api/preview/${file.id}?size=thumb`,
+          {
+            headers: {
+              'X-API-Key': authToken,
+            },
+          }
+        );
+
+        if (!res.ok) {
+          throw new Error(
+            'Failed to load image'
+          );
+        }
+
+        const contentType =
+          res.headers.get('content-type') || '';
+
+        // ===============================================
+        // OBJECT STORAGE
+        // ===============================================
+        if (
+          contentType.includes(
+            'application/json'
+          )
+        ) {
+          const data = await res.json();
+
+          if (!data.preview_url) {
+            throw new Error(
+              'Preview URL tidak tersedia'
+            );
+          }
+
+          if (isMounted) {
+            setImageUrl(data.preview_url);
+          }
+
+          return;
+        }
+
+        // ===============================================
+        // LOCAL STORAGE
+        // ===============================================
         const blob = await res.blob();
+
         objectUrl = URL.createObjectURL(blob);
+
         if (isMounted) setImageUrl(objectUrl);
+
       } catch (err) {
+        console.error('Thumbnail error:',err);
+
         if (isMounted) setHasError(true);
       }
     };
@@ -28,8 +76,15 @@ export default function GridImageThumbnail({ file, authToken }) {
 
     return () => {
       isMounted = false;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+
+      if (
+        objectUrl &&
+        objectUrl.startsWith('blob:')
+      ) {
+        URL.revokeObjectURL(objectUrl);
+      }
     };
+
   }, [file.id, authToken]);
 
   if (hasError || !imageUrl) {
@@ -46,6 +101,7 @@ export default function GridImageThumbnail({ file, authToken }) {
         src={imageUrl}
         alt={file.name}
         loading="lazy"
+        onError={() => setHasError(true)}
         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
       />
     </div>

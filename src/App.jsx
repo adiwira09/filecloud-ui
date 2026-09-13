@@ -71,7 +71,8 @@ export default function App() {
   // Preview Modal State
   const [previewItem, setPreviewItem] = useState(null);
   const [textContent, setTextContent] = useState('');
-  const [isPreviewLoading, setIsPreviewLoading] = useState(true);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState(false);
 
   // State untuk menyimpan ID item yang dipilih (fitur multi-select)
@@ -300,20 +301,39 @@ export default function App() {
   const handleOpenPreview = async (file) => {
     setPreviewItem(file);
     setTextContent('');
+    setPreviewUrl(null);
     setIsPreviewLoading(true);
     setPreviewError(false);
 
-    if (file.type === 'text') {
-      try {
-        const res = await authFetch(`${API_BASE}/api/preview/${file.id}`);
-        if (!res.ok) throw new Error("Gagal mengambil file");
-        const text = await res.text();
-        setTextContent(text);
-      } catch (err) {
-        setPreviewError(true);
-      } finally {
-        setIsPreviewLoading(false);
+    // File non-text akan ditangani oleh FilePreviewModal
+    if (file.type !== 'text') return;
+
+    try{
+      const res = await authFetch(`${API_BASE}/api/preview/${file.id}`);
+
+      if (!res.ok) throw new Error("Gagal mengambil file");
+
+      const contentType = res.headers.get('Content-Type') || '';
+
+      // OBJECT STORAGE
+      if (contentType.includes('application/json')) {
+        const data = await res.json();
+
+        if (!data.preview_url) throw new Error("Preview URL tidak tersedia");
+
+        setPreviewUrl(data.preview_url);
+        return;
       }
+
+      // LOCAL STORAGE
+      const text = await res.text();
+      setTextContent(text);
+
+    } catch (err) {
+      console.error("Preview text error:", err);
+      setPreviewError(true);
+    } finally {
+      setIsPreviewLoading(false);
     }
   };
 
@@ -446,7 +466,7 @@ export default function App() {
           // --- FILE BESAR (>= 5MB): Chunked Upload ---
           const CHUNK_SIZE = THRESHOLD;
           const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-          const uploadId = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+          const uploadId = crypto.randomUUID();
 
           for (let i = 0; i < totalChunks; i++) {
             const start = i * CHUNK_SIZE;
@@ -537,9 +557,22 @@ export default function App() {
       });
       
       if (!res.ok) throw new Error("Gagal membuat link download");
-      const { download_token } = await res.json();
+      const data = await res.json();
 
-      window.location.href = `${API_BASE}/api/download/${download_token}`;
+      // OBJECT STORAGE
+      if (data.download_url) {
+        window.location.href = data.download_url;
+        return;
+      }
+
+      // LOCAL STORAGE
+      if (data.download_token) {
+        window.location.href = `${API_BASE}/api/download/${id}?token=${data.download_token}`;
+        return;
+      }
+
+      throw new Error("Download URL tidak tersedia");
+
     } catch (err) {
       console.error("Error download:", err);
       alert("Gagal mengunduh file.");
@@ -762,13 +795,18 @@ export default function App() {
       {/* MODAL PREVIEW FILE */}
       <FilePreviewModal
         previewItem={previewItem}
-        onClose={() => setPreviewItem(null)}
+        onClose={() => {
+          setPreviewItem(null);
+          setPreviewUrl(null);
+          setTextContent('');
+        }}
         authToken={authToken}
         isPreviewLoading={isPreviewLoading}
         setIsPreviewLoading={setIsPreviewLoading}
         previewError={previewError}
         setPreviewError={setPreviewError}
         textContent={textContent}
+        previewUrl={previewUrl}
         handleOpenPreview={handleOpenPreview}
         handleDownload={handleDownload}
         renderFileIcon={renderFileIcon}
