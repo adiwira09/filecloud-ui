@@ -10,7 +10,7 @@ export default function AuthScreen({
   isVerifyingToken,
 }) {
   return (
-    <div className="min-h-screen min-h-[100dvh] bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen min-h-[100dvh] bg-gray-50 flex items-center justify-center p-4 py-8 overflow-y-auto">
       <form 
         onSubmit={handleSaveToken} 
         className="bg-white p-6 sm:p-8 rounded-lg border-2 border-black max-w-sm w-full shadow-sm"
@@ -47,14 +47,17 @@ export default function AuthScreen({
             value={inputToken}
             onChange={(e) => setInputToken(e.target.value)}
             disabled={cooldown > 0 || isVerifyingToken}
-            className="w-full border-2 border-black rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+            autoCapitalize="none"
+            autoCorrect="off"
+            enterKeyHint="go"
+            className="w-full border-2 border-black rounded px-3 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-1 focus:ring-black disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
           />
         </div>
 
         <button
           type="submit"
           disabled={cooldown > 0 || isVerifyingToken || !inputToken.trim()}
-          className="w-full bg-black text-white font-semibold py-2.5 rounded text-sm hover:bg-gray-800 active:scale-[0.98] transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:border-transparent disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full bg-black text-white font-semibold py-2.5 rounded text-sm hover:bg-gray-800 active:scale-[0.98] transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:border-transparent disabled:cursor-not-allowed flex items-center justify-center gap-2 touch-manipulation"
         >
           {isVerifyingToken ? (
             <>
