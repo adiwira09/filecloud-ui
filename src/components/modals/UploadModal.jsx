@@ -14,6 +14,7 @@ export default function UploadModal({
   setSkippedFiles,
   currentFileIndex,
   uploadProgress,
+  uploadStatus,
   handleUploadSubmit,
 }) {
   if (!isOpen) return null;
@@ -35,7 +36,7 @@ export default function UploadModal({
           <X className="w-5 h-5" />
         </button>
         <h3 className="text-lg font-bold mb-1">Upload Multiple Files</h3>
-        <p className="text-xs text-gray-500 mb-4">Lokasi: {currentFolderName}</p>
+        <p className="text-xs text-gray-500 mb-4"></p>
 
         <form onSubmit={handleUploadSubmit}>
           <input
@@ -51,7 +52,9 @@ export default function UploadModal({
           <div
             onClick={() => !isUploading && fileInputRef.current?.click()}
             className={`border-2 border-dashed border-gray-400 p-5 text-center rounded bg-gray-50 transition-colors mb-3 ${
-              isUploading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 cursor-pointer'
+              isUploading
+                ? 'opacity-50 cursor-not-allowed'
+                : 'hover:bg-gray-100 cursor-pointer'
             }`}
           >
             <Upload className="w-7 h-7 mx-auto text-gray-500 mb-1" />
@@ -76,13 +79,19 @@ export default function UploadModal({
             </div>
           )}
 
-          {/* Tampilan Daftar File Valid yang Akan Diunggah */}
+          {/* Daftar File Valid */}
           {selectedFiles.length > 0 && !isUploading && (
             <div className="mb-4 max-h-28 overflow-y-auto border border-gray-200 rounded p-2 bg-gray-50">
               <span className="text-[11px] font-bold text-gray-500 block mb-1">File siap diunggah:</span>
               {selectedFiles.map((f, idx) => (
-                <div key={idx} className="text-xs text-gray-700 truncate py-0.5 border-b last:border-0 border-gray-200">
-                  • {f.name} <span className="text-gray-400">({(f.size / (1024 * 1024)).toFixed(1)} MB)</span>
+                <div
+                  key={idx}
+                  className="text-xs text-gray-700 truncate py-0.5 border-b last:border-0 border-gray-200"
+                >
+                  • {f.name}{' '}
+                  <span className="text-gray-400">
+                    ({(f.size / (1024 * 1024)).toFixed(1)} MB)
+                  </span>
                 </div>
               ))}
             </div>
@@ -93,18 +102,24 @@ export default function UploadModal({
             <div className="mb-4">
               <div className="flex justify-between text-xs font-semibold mb-1 text-gray-700">
                 <span>
-                  Memproses File {currentFileIndex} dari {selectedFiles.length}
+                  {uploadStatus === 'finalizing'
+                    ? 'Finalizing...'
+                    : `Mengunggah File ${currentFileIndex} dari ${selectedFiles.length}`}
                 </span>
                 <span>{uploadProgress}%</span>
               </div>
               <div className="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden border border-black">
                 <div
                   className="bg-black h-full transition-all duration-200 ease-out"
-                  style={{ width: `${uploadProgress}%` }}
+                  style={{
+                    width: `${uploadProgress}%`,
+                  }}
                 />
               </div>
               <p className="text-[11px] text-gray-500 mt-1 truncate">
-                Uploading: {selectedFiles[currentFileIndex - 1]?.name}
+                {uploadStatus === 'finalizing'
+                  ? `Menyimpan metadata: ${selectedFiles[currentFileIndex - 1]?.name}`
+                  : `Uploading: ${selectedFiles[currentFileIndex - 1]?.name}`}
               </p>
             </div>
           )}
@@ -124,7 +139,7 @@ export default function UploadModal({
               disabled={selectedFiles.length === 0 || isUploading}
               className="px-4 py-1.5 bg-black text-white rounded text-sm hover:bg-gray-800 disabled:bg-gray-400"
             >
-              {isUploading ? `Mengunggah (${currentFileIndex}/${selectedFiles.length})...` : "Upload Semua"}
+              {isUploading ? uploadStatus === 'finalizing' ? 'Finalizing...' : `Mengunggah (${currentFileIndex}/${selectedFiles.length})...` : "Upload Semua"}
             </button>
           </div>
         </form>

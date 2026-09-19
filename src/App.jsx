@@ -65,6 +65,7 @@ export default function App() {
 
   // Upload Progress State
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState("idle");
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -435,89 +436,148 @@ export default function App() {
 
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
-    if (selectedFiles.length === 0) return alert("Pilih minimal satu file yang valid!");
+
+    if (selectedFiles.length === 0) {
+      return alert("Pilih minimal satu file yang valid!");
+    }
 
     setIsUploading(true);
-    const THRESHOLD = 5 * 1024 * 1024; // Batas 5 MB
 
     try {
       for (let fIndex = 0; fIndex < selectedFiles.length; fIndex++) {
         const file = selectedFiles[fIndex];
+
         setCurrentFileIndex(fIndex + 1);
         setUploadProgress(0);
+        setUploadStatus("uploading");
 
-        if (file.size < THRESHOLD) {
-          // --- FILE KECIL (< 5MB): Direct Upload ---
-          const formData = new FormData();
-          formData.append("file", file);
-          if (currentFolder.id !== null) {
-            formData.append("parent_id", currentFolder.id);
-          }
+        const reqData = new FormData();
+        reqData.append("filename", file.name);
+        reqData.append("file_size", file.size);
 
-          const res = await authFetch(`${API_BASE}/api/upload`, {
+        if (file.type) {
+          reqData.append("content_type", file.type);
+        }
+
+        const reqRes = await authFetch(`${API_BASE}/api/upload/request-url`, {
             method: "POST",
-            body: formData,
+            body: reqData,
           });
 
-          if (!res.ok) throw new Error(`Gagal mengunggah ${file.name}`);
-          setUploadProgress(100);
+        if (!reqRes.ok) {
+          const errorData = await reqRes.json().catch(() => ({}));
 
-        } else {
-          // --- FILE BESAR (>= 5MB): Chunked Upload ---
-          const CHUNK_SIZE = THRESHOLD;
-          const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-          const uploadId = crypto.randomUUID();
+          throw new Error(
+            errorData.detail ||
+            `Gagal meminta izin upload untuk ${file.name}`
+          );
+        }
 
-          for (let i = 0; i < totalChunks; i++) {
-            const start = i * CHUNK_SIZE;
-            const end = Math.min(file.size, start + CHUNK_SIZE);
-            const chunk = file.slice(start, end);
+        const { upload_url, object_key } = await reqRes.json();
 
-            const chunkData = new FormData();
-            chunkData.append("upload_id", uploadId);
-            chunkData.append("chunk_index", i);
-            chunkData.append("file", chunk, file.name);
+        let targetUrl = upload_url;
 
-            const res = await authFetch(`${API_BASE}/api/upload/chunk`, {
-              method: "POST",
-              body: chunkData,
-            });
+        if (targetUrl.startsWith("/")) {
+          targetUrl = `${API_BASE}${targetUrl}`;
+        }
 
-            if (!res.ok) throw new Error(`Gagal mengunggah ${file.name} bagian ke-${i + 1}`);
+        await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
 
-            const progressPercent = Math.round(((i + 1) / totalChunks) * 100);
-            setUploadProgress(progressPercent);
+          xhr.open("PUT", targetUrl);
+
+          // Local Storage
+          if (upload_url.includes("/api/upload/local-direct")) {
+            xhr.setRequestHeader("X-API-Key", authToken);
           }
 
-          const completeData = new FormData();
-          completeData.append("upload_id", uploadId);
-          completeData.append("filename", file.name);
-          completeData.append("total_chunks", totalChunks);
-          if (currentFolder.id !== null) {
-            completeData.append("parent_id", currentFolder.id);
+          // Object Storage
+          else if (file.type) {
+            xhr.setRequestHeader("Content-Type", file.type);
           }
 
-          const completeRes = await authFetch(`${API_BASE}/api/upload/complete`, {
+          let lastPercent = -1;
+
+          xhr.upload.onprogress = (event) => {
+            if (!event.lengthComputable) return;
+
+            const percent = Math.round(
+              (event.loaded / event.total) * 100
+            );
+
+            if (percent !== lastPercent) {
+              lastPercent = percent;
+              setUploadProgress(percent);
+            }
+          };
+
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve();
+            } else {
+              reject(
+                new Error(`Gagal mengunggah ${file.name} ke storage (${xhr.status})`)
+              );
+            }
+          };
+
+          xhr.onerror = () => {
+            reject(
+              new Error(`Koneksi terputus saat mengunggah ${file.name}`)
+            );
+          };
+
+          xhr.send(file);
+        });
+
+        setUploadStatus("finalizing");
+
+        const completeData = new FormData();
+
+        completeData.append("object_key", object_key);
+        completeData.append("filename", file.name);
+        completeData.append("file_size", file.size);
+
+        if (currentFolder.id !== null) {
+          completeData.append("parent_id", currentFolder.id);
+        }
+
+        const completeRes = await authFetch(`${API_BASE}/api/upload/complete`, {
             method: "POST",
             body: completeData,
           });
 
-          if (!completeRes.ok) throw new Error(`Gagal menggabungkan file ${file.name}`);
+        if (!completeRes.ok) {
+          const errorData = await completeRes.json().catch(() => ({}));
+
+          throw new Error(
+            errorData.detail ||
+            `Upload ${file.name} berhasil, tetapi gagal menyimpan metadata`
+          );
         }
       }
 
       setSelectedFiles([]);
       setSkippedFiles([]);
       setIsUploadModalOpen(false);
+
       fetchFiles(searchQuery, currentFolder.id);
       fetchStorage();
+
       alert("Semua file berhasil diunggah!");
+
     } catch (err) {
       console.error("Error upload:", err);
-      alert(err.message || "Terjadi kesalahan saat mengunggah.");
+
+      alert(
+        err.message ||
+        "Terjadi kesalahan saat mengunggah."
+      );
+
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
+      setUploadStatus("idle");
       setCurrentFileIndex(0);
     }
   };
