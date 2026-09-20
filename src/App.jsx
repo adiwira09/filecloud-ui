@@ -79,20 +79,41 @@ export default function App() {
   // State untuk menyimpan ID item yang dipilih (fitur multi-select)
   const [selectedItemIds, setSelectedItemIds] = useState([]);
 
-  // State untuk menyimpan token autentikasi dari localStorage
+  // Authentication & login rate limit state
   const getStoredAttempts = () => parseInt(localStorage.getItem('auth_failed_attempts') || '0', 10);
   const getStoredCooldown = () => {
     const until = parseInt(localStorage.getItem('auth_cooldown_until') || '0', 10);
     const remaining = Math.ceil((until - Date.now()) / 1000);
     return remaining > 0 ? remaining : 0;
   };
-  const [authToken, setAuthToken] = useState(() => localStorage.getItem('auth_token') || '');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [inputToken, setInputToken] = useState('');
   const [authError, setAuthError] = useState('');
   const [failedAttempts, setFailedAttempts] = useState(getStoredAttempts);
   const [cooldown, setCooldown] = useState(getStoredCooldown);
   const [isVerifyingToken, setIsVerifyingToken] = useState(false);
   
+  // State untuk menyimpan token autentikasi yang valid
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/me`, {
+          credentials: 'include',
+        });
+
+        setIsAuthenticated(res.ok);
+      } catch (err) {
+        console.error('Auth check error:', err);
+        setIsAuthenticated(false);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
   // Timer Countdown 60 Detik saat terkena Cooldown
   useEffect(() => {
     if (cooldown <= 0) {
@@ -120,101 +141,71 @@ export default function App() {
     return () => clearInterval(timer);
   }, [cooldown]);
 
-  // Auto-Check Status IP ke Backend saat Form Login Dimuat
-  useEffect(() => {
-    if (authToken) return;
-
-    const checkIpStatus = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/storage`, {
-          headers: { 
-            'X-API-Key': 'status_check',
-            'X-Check-Only': 'true' 
-          },
-        });
-
-        if (res.status === 429) {
-          const data = await res.json().catch(() => ({}));
-          const retryAfter = data.retry_after || 60;
-          const cooldownUntil = Date.now() + (retryAfter * 1000);
-
-          localStorage.setItem('auth_cooldown_until', cooldownUntil.toString());
-          setCooldown(retryAfter);
-          setAuthError(`IP Anda sedang diblokir server! Silakan tunggu ${retryAfter} detik.`);
-        }
-      } catch (err) {
-        console.error("Gagal mengecek status IP:", err);
-      }
-    };
-
-    checkIpStatus();
-  }, [authToken]);
-
   // fetch otomatis menyisipkan token autentikasi di Header
   const handleSaveToken = async (e) => {
     e.preventDefault();
-    if (cooldown > 0 || isVerifyingToken || !inputToken.trim()) return;
+    if (!inputToken.trim()) return;
 
     setIsVerifyingToken(true);
     setAuthError('');
 
     try {
-      const res = await fetch(`${API_BASE}/api/storage`, {
-        headers: { 'X-API-Key': inputToken },
+      const res = await fetch(`${API_BASE}/api/auth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ access_key: inputToken }),
       });
 
+      const data = await res.json().catch(() => ({}));
+
       if (res.status === 429) {
-        const data = await res.json().catch(() => ({}));
         const retryAfter = data.retry_after || 60;
-        const cooldownUntil = Date.now() + (retryAfter * 1000);
-        
-        localStorage.setItem('auth_cooldown_until', cooldownUntil.toString());
+        const cooldownUntil = Date.now() + retryAfter * 1000;
+
+        localStorage.setItem(
+          'auth_cooldown_until',
+          cooldownUntil.toString()
+        );
+
         setCooldown(retryAfter);
-        setAuthError(`Terlalu banyak percobaan! Diblokir server selama ${retryAfter} detik.`);
+        setAuthError(data.detail || `Terlalu banyak percobaan. Silakan tunggu ${retryAfter} detik`);
+
         return;
       }
 
-      if (res.ok) {
-        localStorage.setItem('auth_token', inputToken);
-        localStorage.removeItem('auth_failed_attempts');
-        localStorage.removeItem('auth_cooldown_until');
-        setAuthToken(inputToken);
-        setFailedAttempts(0);
-        setAuthError('');
-      } else {
-        const newAttempts = failedAttempts + 1;
-        if (newAttempts >= 5) {
-          const cooldownUntil = Date.now() + 60000; // 60 Detik dari sekarang
-          localStorage.setItem('auth_cooldown_until', cooldownUntil.toString());
-          localStorage.setItem('auth_failed_attempts', '0');
-          
-          setFailedAttempts(0);
-          setCooldown(60);
-          setAuthError('Batas percobaan tercapai (5x)! Silakan tunggu 60 detik.');
-        } else {
-          localStorage.setItem('auth_failed_attempts', newAttempts.toString());
-          setFailedAttempts(newAttempts);
-          setAuthError(`Access Key salah! Coba lagi (${newAttempts}/5).`);
-        }
+      if (!res.ok) {
+        throw new Error(data.detail || 'Gagal memverifikasi Access Key');
       }
+
+      setIsAuthenticated(true);
+      setInputToken('');
+
+      localStorage.removeItem('auth_cooldown_until');
+      setCooldown(0);
+      setAuthError('');
+
     } catch (err) {
-      console.error("Error verifikasi token:", err);
-      setAuthError('Gagal terhubung ke server. Periksa koneksi Anda.');
+      console.error('Login error:', err);
+      setAuthError(err.message || 'Gagal melakukan login');
     } finally {
       setIsVerifyingToken(false);
     }
   };
 
   const authFetch = async (url, options = {}) => {
-    const res = await fetch(url, {
+    const response = await fetch(url, {
       ...options,
-      headers: {
-        ...(options.headers || {}),
-        'X-API-Key': authToken,
-      },
+      credentials: 'include',
     });
 
-    return res;
+    if (response.status === 401) {
+      setIsAuthenticated(false);
+    }
+
+    return response;
   };
 
   // ---------------- API FETCH FUNCTIONS ----------------
@@ -233,9 +224,8 @@ export default function App() {
       const res = await authFetch(url, { signal });
 
       if (res.status === 401) {
-        localStorage.removeItem('auth_token');
-        setAuthToken('');
-        setAuthError('Sesi telah berakhir atau Access Key tidak valid.');
+        setIsAuthenticated(false);
+        setAuthError('Sesi telah berakhir atau session sudah tidak valid');
         return;
       }
 
@@ -269,7 +259,7 @@ export default function App() {
   }, [searchQuery]);
 
   useEffect(() => {
-    if (!authToken) return;
+    if (!isAuthenticated) return;
 
     const controller = new AbortController();
 
@@ -279,8 +269,7 @@ export default function App() {
     return () => {
       controller.abort();
     };
-    
-  }, [debouncedSearchQuery, currentFolder.id, authToken]);
+  }, [debouncedSearchQuery, currentFolder.id, isAuthenticated]);
 
   useEffect(() => {
     document.title = `${currentFolder.name} - Bilik UnuyAdi`;
@@ -411,7 +400,7 @@ export default function App() {
   // Helper Khusus Thumbnail Grid View
   const renderGridThumbnail = (file) => {
     if (file.type === 'image') {
-      return <GridImageThumbnail file={file} authToken={authToken} />;
+      return <GridImageThumbnail file={file} />;
     }
 
     if (file.is_folder || file.type === 'folder') {
@@ -485,14 +474,10 @@ export default function App() {
           const xhr = new XMLHttpRequest();
 
           xhr.open("PUT", targetUrl);
-
-          // Local Storage
-          if (upload_url.includes("/api/upload/local-direct")) {
-            xhr.setRequestHeader("X-API-Key", authToken);
-          }
+          xhr.withCredentials = true;
 
           // Object Storage
-          else if (file.type) {
+          if (file.type) {
             xhr.setRequestHeader("Content-Type", file.type);
           }
 
@@ -679,14 +664,24 @@ export default function App() {
   };
   
   // HANDLER LOGOUT
-  const handleLogout = () => {
-    if (confirm('Apakah Anda yakin ingin mengunci sesi ini?')) {
-      localStorage.removeItem('auth_token');
-      setAuthToken('');
+  const handleLogout = async () => {
+    try {
+      await fetch(`${API_BASE}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      setIsAuthenticated(false);
     }
   };
 
-  if (!authToken) {
+  if (isCheckingAuth) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
     return (
       <AuthScreen
         handleSaveToken={handleSaveToken}
@@ -860,7 +855,6 @@ export default function App() {
           setPreviewUrl(null);
           setTextContent('');
         }}
-        authToken={authToken}
         isPreviewLoading={isPreviewLoading}
         setIsPreviewLoading={setIsPreviewLoading}
         previewError={previewError}
