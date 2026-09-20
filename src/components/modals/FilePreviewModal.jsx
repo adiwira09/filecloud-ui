@@ -5,7 +5,6 @@ import { API_BASE } from '../../utils/constants';
 export default function FilePreviewModal({
   previewItem,
   onClose,
-  authToken,
   isPreviewLoading,
   setIsPreviewLoading,
   previewError,
@@ -35,9 +34,7 @@ export default function FilePreviewModal({
         const res = await fetch(
           `${API_BASE}/api/preview/${previewItem.id}`,
           {
-            headers: {
-              'X-API-Key': authToken,
-            },
+            credentials: 'include',
           }
         );
 
@@ -102,7 +99,6 @@ export default function FilePreviewModal({
   }, [
     previewItem?.id,
     previewItem?.type,
-    authToken,
     setIsPreviewLoading,
     setPreviewError,
   ]);

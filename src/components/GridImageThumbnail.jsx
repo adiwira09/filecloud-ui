@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Image as ImageIcon } from 'lucide-react';
 import { API_BASE } from '../utils/constants';
 
-export default function GridImageThumbnail({ file, authToken }) {
+export default function GridImageThumbnail({ file }) {
   const [imageUrl, setImageUrl] = useState(null);
   const [hasError, setHasError] = useState(false);
 
@@ -18,9 +18,7 @@ export default function GridImageThumbnail({ file, authToken }) {
         const res = await fetch(
           `${API_BASE}/api/preview/${file.id}?size=thumb`,
           {
-            headers: {
-              'X-API-Key': authToken,
-            },
+            credentials: 'include',
           }
         );
 
@@ -85,7 +83,7 @@ export default function GridImageThumbnail({ file, authToken }) {
       }
     };
 
-  }, [file.id, authToken]);
+  }, [file.id]);
 
   if (hasError || !imageUrl) {
     return (
